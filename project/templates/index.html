@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>越界行为监测系统</title>
+    <style>
+        :root {
+            --bg: #0b1020;
+            --panel: #121a2e;
+            --panel-2: #16213a;
+            --border: #22304a;
+            --text: #eaf0fb;
+            --muted: #8296b8;
+            --accent: #2dd4ff;
+            --accent-2: #7b5cff;
+            --green: #22d39b;
+            --amber: #ffb020;
+            --red: #ff4d6d;
+            --radius: 14px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+            background:
+                radial-gradient(1200px 500px at 10% -10%, rgba(45,212,255,.10), transparent 60%),
+                radial-gradient(1000px 500px at 110% 0%, rgba(123,92,255,.12), transparent 55%),
+                var(--bg);
+            color: var(--text);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 18px 26px;
+            background: linear-gradient(135deg, #141d33, #182440);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,.35);
+        }
+        .header h1 {
+            font-size: 22px;
+            font-weight: 600;
+            background: linear-gradient(90deg, #00d4ff, #7b2ffc);
+            -webkit-background-clip: text;
+            color: transparent;
+            letter-spacing: 2px;
+        }
+        .header .subtitle {
+            font-size: 12px;
+            color: #6a8aaa;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+        .nav a {
+            color: var(--muted);
+            text-decoration: none;
+            margin-left: 10px;
+            font-size: 14px;
+            padding: 7px 15px;
+            border-radius: 999px;
+            transition: all .2s;
+        }
+        .nav a:hover { color: var(--accent); background: rgba(45,212,255,.08); }
+        .nav a.active { color: #fff; font-weight: bold; background: linear-gradient(90deg,#1a5a8a,#2a6aaa); }
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-dot.green { background: #00ff88; box-shadow: 0 0 12px #00ff8866; }
+        .status-dot.yellow { background: #ffcc00; box-shadow: 0 0 12px #ffcc0066; animation: blink 0.6s infinite; }
+        .status-dot.red { background: #ff0044; box-shadow: 0 0 12px #ff004466; animation: blink 0.6s infinite; }
+        @keyframes blink { 0%,100% {opacity:1;} 50% {opacity:0.3;} }
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .card {
+            background: linear-gradient(145deg, var(--panel), var(--panel-2));
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            box-shadow: 0 8px 26px rgba(0,0,0,.3);
+        }
+        .card:hover { border-color: #2a4a6a; }
+        .card-title {
+            font-size: 14px;
+            color: #a7b8d8;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+        .card-title .icon { font-size: 18px; }
+        .video-wall {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3px;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        .video-wall .cam-item {
+            position: relative;
+            background: #000;
+            overflow: hidden;
+            cursor: pointer;
+            aspect-ratio: 16 / 9;
+            width: 100%;
+        }
+        .video-wall .cam-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .cam-label {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            font-size: 9px;
+            color: #fff;
+            background: rgba(0,0,0,0.6);
+            padding: 1px 6px;
+            border-radius: 3px;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .cam-badge {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            font-size: 8px;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-weight: 600;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .cam-badge.none { background: rgba(0,200,0,0.3); color: #4aef6a; }
+        .cam-badge.yellow { background: rgba(255,200,0,0.4); color: #ffdd44; animation: blink 0.8s infinite; }
+        .cam-badge.red { background: rgba(255,0,0,0.4); color: #ff4444; animation: blink 0.8s infinite; }
+        #drawCanvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 999 !important;
+        }
+        #drawCatcher {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1000 !important;
+            cursor: crosshair;
+            display: none;
+        }
+        .zoom-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .zoom-overlay.active { display: flex; }
+        .zoom-container {
+            width: min(95vw, 1100px);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .zoom-main {
+            width: 100%;
+            aspect-ratio: 16/9;
+            position: relative;
+            background: #000;
+            overflow: hidden;
+            border-radius: 8px;
+        }
+        .zoom-main img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .zoom-label {
+            position: absolute;
+            top: 12px; left: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.5);
+            padding: 4px 14px;
+            border-radius: 6px;
+            z-index: 10;
+        }
+        .zoom-badge {
+            position: absolute;
+            top: 12px; right: 80px;
+            font-size: 13px;
+            padding: 4px 14px;
+            border-radius: 16px;
+            font-weight: 600;
+            z-index: 10;
+        }
+        .zoom-badge.none { background: rgba(0,200,0,0.3); color: #4aef6a; }
+        .zoom-badge.yellow { background: rgba(255,200,0,0.3); color: #ffcc44; animation: blink 0.8s infinite; }
+        .zoom-badge.red { background: rgba(255,0,0,0.4); color: #ff4444; animation: blink 0.8s infinite; }
+        .btn-close-zoom {
+            position: absolute;
+            top: 10px; right: 10px;
+            z-index: 20;
+            padding: 6px 18px;
+            background: rgba(255,0,68,0.8);
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .zoom-thumbnails {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+        }
+        .zoom-thumbnail {
+            flex: 1;
+            height: 85px;
+            background: #000;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+            transition: border-color 0.3s;
+        }
+        .zoom-thumbnail:hover { border-color: #00ccff; }
+        .zoom-thumbnail.active { border-color: #ffcc00; box-shadow: 0 0 12px #ffcc0066; }
+        .zoom-thumbnail img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+        }
+        .thumb-label {
+            position: absolute;
+            bottom: 2px; left: 4px;
+            font-size: 8px;
+            color: #fff;
+            background: rgba(0,0,0,0.6);
+            padding: 1px 6px;
+            border-radius: 2px;
+            pointer-events: none;
+        }
+        .video-overlay-tip {
+            position: absolute;
+            bottom: 8px; left: 8px;
+            background: rgba(0,0,0,0.7);
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 10px;
+            color: #8ab4d6;
+            z-index: 3;
+            pointer-events: none;
+        }
+        .status-row {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .status-item {
+            flex: 1;
+            min-width: 100px;
+            background: #0d1420;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border-left: 3px solid #2a5a8a;
+        }
+        .status-item .label { font-size: 11px; color: #6a8aaa; }
+        .status-item .value { font-size: 20px; font-weight: 600; margin-top: 2px; }
+        .value.warning { color: #ffcc00; }
+        .value.danger { color: #ff4444; }
+        .value.info { color: #00ccff; }
+        .btn {
+            padding: 8px 18px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,.25);
+        }
+        .btn:active { transform: translateY(1px); }
+        .btn-primary { background: linear-gradient(90deg, #1a6fae, #2a8fd8); }
+        .btn-primary:hover { filter: brightness(1.1); }
+        .btn-danger { background: linear-gradient(90deg, #c43a52, #e0526d); }
+        .btn-danger:hover { filter: brightness(1.1); }
+        .btn-success { background: linear-gradient(90deg, #159a6a, #22b88a); }
+        .btn-success:hover { filter: brightness(1.1); }
+        .btn-warning { background: linear-gradient(90deg, #c08a1a, #e0a62a); }
+        .btn-warning:hover { filter: brightness(1.1); }
+        .btn-secondary { background: #2a3a4a; color: #fff; }
+        .btn-secondary:hover { filter: brightness(1.1); }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th {
+            text-align: left;
+            padding: 8px 6px;
+            color: #7a9abb;
+            border-bottom: 1px solid #1e3048;
+            font-weight: 400;
+        }
+        td {
+            padding: 6px;
+            border-bottom: 1px solid #0d1a2a;
+            color: #c0d0e0;
+        }
+        .record-scroll {
+            max-height: 220px;
+            overflow-y: auto;
+        }
+        .record-scroll::-webkit-scrollbar { width: 4px; }
+        .record-scroll::-webkit-scrollbar-thumb { background: #2a4a6a; border-radius: 2px; }
+        .map-container {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #0a0e17;
+            min-height: 200px;
+        }
+        .map-container img {
+            width: 100%;
+            display: block;
+            border-radius: 8px;
+        }
+        .map-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+            color: #3a5a7a;
+            font-size: 14px;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .flex-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+            align-items: center;
+        }
+        .flex-row input[type="file"] { display: none; }
+        .file-label {
+            padding: 6px 16px;
+            background: #1a2a4a;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #8ab4d6;
+            border: 1px dashed #2a5a7a;
+        }
+        .cam-select {
+            background: #1a2a4a;
+            color: #e0e8f0;
+            padding: 4px 10px;
+            border-radius: 4px;
+            border: 1px solid #2a5a7a;
+            font-size: 13px;
+        }
+        .cam-select:focus {
+            outline: none;
+            border-color: #00ccff;
+        }
+        .draw-cancel-btn { display: none; }
+        @media (max-width:900px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width:700px) {
+            .zoom-thumbnail { height: 60px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>🛡️ 越界行为监测与区域告警系统</h1>
+            <div class="subtitle">人体实例分割 · 进入警戒区黄色预警 · 超时6秒红色告警 · 持续声光报警</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span style="font-size:13px;color:var(--muted);">四路监控</span>
+            <span id="statusDot" class="status-dot green"></span>
+            <span id="alarmLevelText" style="font-size:14px;">无告警</span>
+            <button class="btn btn-warning" id="pauseBtn" onclick="togglePause()" style="padding:10px 22px;font-size:14px;box-shadow:0 4px 16px rgba(224,166,42,.4);" title="暂停后释放摄像头，可去白名单页拍照">⏸️ 暂停摄像头</button>
+            <div class="nav" style="margin-left:20px;">
+                <a href="/" class="active">监控</a>
+                <a href="/records">记录</a>
+                <a href="/whitelist">白名单</a>
+                <a href="/logout" style="color:#ff8aa0;">退出({{ username }})</a>
+            </div>
+        </div>
+    </div>
+    <div class="main-grid">
+        <div>
+            <div class="card">
+                <div class="card-title"><span class="icon">📹</span> 实时监控画面 <span style="font-size:12px;color:#4a8a7a;margin-left:10px;">点击放大 | 拖拽设置警戒区</span></div>
+                <div class="video-wall" id="videoWall">
+                    {% for cam in cameras %}
+                    <div class="cam-item" data-cam="{{ cam.id }}" onclick="zoomIn(this)">
+                        <img src="/video_feed/{{ cam.id }}" alt="{{ cam.name }}">
+                        <div class="cam-label">{{ cam.name }}</div>
+                        <div class="cam-badge none" id="badge_{{ cam.id }}">●</div>
+                    </div>
+                    {% endfor %}
+                    <canvas id="drawCanvas"></canvas>
+                    <div id="drawCatcher"></div>
+                    <div class="video-overlay-tip">🟢正常 / 🟡入区预警 / 🔴超时告警（持续响铃）</div>
+                    <div class="zoom-overlay" id="zoomOverlay">
+                        <div class="zoom-container">
+                            <div class="zoom-main" id="zoomMain">
+                                <img id="zoomImg" src="">
+                                <div class="zoom-label" id="zoomLabel">📹</div>
+                                <div class="zoom-badge none" id="zoomBadge">● 正常</div>
+                                <button class="btn-close-zoom" onclick="zoomOut()">✕ 关闭放大</button>
+                            </div>
+                            <div class="zoom-thumbnails" id="thumbnails"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-row">
+                    <button class="btn btn-danger" onclick="clearRecords()">🗑️ 清空全部告警记录</button>
+                    <button class="btn btn-warning" onclick="resetZone()">🔄 重置当前摄像头警戒区</button>
+                    <button class="btn btn-primary" id="drawBtn" onclick="toggleDrawMode()">✏️ 开启绘制警戒区</button>
+                    <button class="btn btn-secondary draw-cancel-btn" id="cancelDrawBtn" onclick="cancelDraw()">✖ 取消绘制</button>
+                    <select id="camSelect" class="cam-select" onchange="refreshCurrentZone()">
+                        {% for cam in cameras %}
+                        <option value="{{ cam.id }}">{{ cam.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <span style="font-size:12px;color:#4a7a6a;" id="drawHint">点击按钮开启绘制模式</span>
+                    <span style="font-size:12px;color:#4a7a6a;margin-left:auto;">当前警戒区坐标: <span id="currentZoneCoords">30,30,70,70</span></span>
+                </div>
+            </div>
+            <div class="card" style="margin-top:20px;">
+                <div class="card-title"><span class="icon">📊</span> 系统实时状态</div>
+                <div class="status-row">
+                    <div class="status-item">
+                        <div class="label">累计超时告警次数</div>
+                        <div class="value info" id="violationCount">0</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="label">全局告警状态</div>
+                        <div class="value info" id="alarmLevelDisplay">无</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="label">监控通道数量</div>
+                        <div class="value info">4</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="card">
+                <div class="card-title"><span class="icon">🗺️</span> 场景平面图上传</div>
+                <div class="map-container" id="mapContainer">
+                    <div class="map-placeholder" id="mapPlaceholder">
+                        <span style="font-size:40px;">🗺️</span>
+                        <span>暂未上传区域平面图</span>
+                        <label class="file-label" for="mapUpload">📤 选择图片上传</label>
+                        <input type="file" id="mapUpload" accept="image/*">
+                    </div>
+                    <img id="mapImage" style="display:none;" alt="区域平面图">
+                </div>
+                <div class="flex-row">
+                    <button class="btn btn-success" onclick="document.getElementById('mapUpload').click()">上传平面图</button>
+                    <span id="mapStatus" style="font-size:12px;color:#4a7a5a;">未上传</span>
+                </div>
+            </div>
+            <div class="card" style="margin-top:20px;">
+                <div class="card-title"><span class="icon">🎬</span> 演示视频源管理（在线视频 / 本地视频，自动进入警戒区报警）</div>
+                <div class="flex-row">
+                    <input type="url" id="videoUrl" placeholder="粘贴在线视频URL（.mp4等），自动下载并循环播放" style="flex:1;min-width:220px;padding:10px 12px;background:#0d1420;border:1px solid #2a3a55;border-radius:8px;color:#e8edf3;font-size:13px;">
+                    <label class="file-label" for="videoFile">📁 选择本地视频</label>
+                    <input type="file" id="videoFile" accept="video/*">
+                    <button class="btn btn-success" onclick="addVideoSource(this)">▶️ 添加为监控源</button>
+                </div>
+                <div id="videoList" style="margin-top:12px;font-size:13px;"></div>
+            </div>
+            <div class="card" style="margin-top:20px;">
+                <div class="card-title"><span class="icon">📋</span> 历史告警记录（最新20条）</div>
+                <div class="record-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>序号</th>
+                                <th>告警时间</th>
+                                <th>告警内容</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recordTableBody">
+                            <tr><td colspan="3" style="color:#3a5a7a;text-align:center;">暂无告警记录</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let allCamData = [];
+        let currentZoomCamId = null;
+        function refreshCurrentZone() {
+            const cid = document.getElementById("camSelect").value;
+            const cam = allCamData.find(d => d.id === cid);
+            if (cam) document.getElementById("currentZoneCoords").innerText = cam.zone.join(",");
+        }
+        // 动态渲染视频墙（新增/删除视频源后无需刷新页面）
+        function renderCamTiles(data) {
+            const wall = document.getElementById('videoWall');
+            const canvas = document.getElementById('drawCanvas');
+            const wanted = new Set(data.map(d => d.id));
+            wall.querySelectorAll('.cam-item').forEach(el => {
+                if (!wanted.has(el.dataset.cam)) el.remove();
+            });
+            const existing = new Set([...wall.querySelectorAll('.cam-item')].map(el => el.dataset.cam));
+            data.forEach(d => {
+                if (existing.has(d.id)) return;
+                const cell = document.createElement('div');
+                cell.className = 'cam-item';
+                cell.dataset.cam = d.id;
+                cell.onclick = function () { zoomIn(cell); };
+                const img = document.createElement('img');
+                img.src = `/video_feed/${d.id}`;
+                img.alt = d.name;
+                cell.appendChild(img);
+                const label = document.createElement('div');
+                label.className = 'cam-label';
+                label.textContent = d.name;
+                cell.appendChild(label);
+                const badge = document.createElement('div');
+                badge.className = 'cam-badge none';
+                badge.id = `badge_${d.id}`;
+                badge.textContent = '●';
+                cell.appendChild(badge);
+                wall.insertBefore(cell, canvas);
+            });
+            // 同步摄像头下拉框
+            const sel = document.getElementById('camSelect');
+            const prev = sel.value;
+            sel.innerHTML = '';
+            data.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.textContent = d.name + (d.kind === 'video' ? '（视频源）' : '');
+                sel.appendChild(opt);
+            });
+            if (prev && wanted.has(prev)) sel.value = prev;
+        }
+        // ===== 演示视频源管理 =====
+        async function addVideoSource(btn) {
+            const url = document.getElementById('videoUrl').value.trim();
+            const fileInput = document.getElementById('videoFile');
+            if (!url && !fileInput.files[0]) { alert('请填写在线视频URL或选择本地视频'); return; }
+            const fd = new FormData();
+            if (url) fd.append('video_url', url);
+            if (fileInput.files[0]) fd.append('video_file', fileInput.files[0]);
+            btn.disabled = true;
+            btn.innerText = '⏳ 加载中...';
+            try {
+                const res = await fetch('/api/video/source', { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    alert('✅ 视频源已添加：' + data.name);
+                    document.getElementById('videoUrl').value = '';
+                    fileInput.value = '';
+                    fetchStatus();
+                    loadVideos();
+                } else {
+                    alert('❌ ' + (data.error || '添加失败'));
+                }
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '▶️ 添加为监控源';
+            }
+        }
+        async function loadVideos() {
+            try {
+                const res = await fetch('/api/videos');
+                const vids = await res.json();
+                const box = document.getElementById('videoList');
+                if (vids.length === 0) {
+                    box.innerHTML = '<span style="color:#3a5a7a;">暂无演示视频源。填入URL或上传视频后点击添加，即可用视频演示越界报警。</span>';
+                    return;
+                }
+                box.innerHTML = '';
+                vids.forEach(v => {
+                    const row = document.createElement('div');
+                    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid #1e3048;border-radius:6px;margin-bottom:6px;';
+                    row.innerHTML = '<span style="color:#8ab4d6;">🎬 ' + v.name + '</span>' +
+                        '<button class="btn btn-danger" style="padding:4px 12px;font-size:12px;" onclick="removeVideo(\'' + v.id + '\')">🗑️ 移除</button>';
+                    box.appendChild(row);
+                });
+            } catch (e) {}
+        }
+        async function removeVideo(id) {
+            if (!confirm('确定移除该视频源？')) return;
+            const res = await fetch(`/api/video/delete/${id}`, { method: 'POST' });
+            const data = await res.json();
+            if (data.status === 'ok') { fetchStatus(); loadVideos(); }
+            else alert('❌ ' + (data.error || '移除失败'));
+        }
+        // ===== 暂停/恢复摄像头（释放被占用的摄像头，供白名单拍照）=====
+        let monitorPaused = false;
+        async function togglePause() {
+            const btn = document.getElementById('pauseBtn');
+            const url = monitorPaused ? '/api/monitor/resume' : '/api/monitor/pause';
+            const res = await fetch(url, { method: 'POST' });
+            const data = await res.json();
+            if (data.status === 'ok') {
+                monitorPaused = !monitorPaused;
+                btn.innerText = monitorPaused ? '▶️ 恢复摄像头' : '⏸️ 暂停摄像头';
+                btn.style.background = monitorPaused ? 'linear-gradient(90deg,#159a6a,#22b88a)' : 'linear-gradient(90deg,#c08a1a,#e0a62a)';
+                toast(monitorPaused ? '✅ 摄像头已暂停并释放，现在可以到「白名单」页使用摄像头拍照' : '✅ 摄像头已恢复', 'success');
+                fetchStatus();
+            }
+        }
+        function fetchStatus() {
+            fetch('/api/cameras')
+                .then(res => res.json())
+                .then(data => {
+                    allCamData = data;
+                    renderCamTiles(data);
+                    refreshCurrentZone();
+                    let totalRedAlarm = 0, hasYellow = false, hasRed = false;
+                    let allRecords = [];
+                    data.forEach(cam => {
+                        const badge = document.getElementById(`badge_${cam.id}`);
+                        if (badge) {
+                            badge.className = 'cam-badge';
+                            if (cam.alarm_level === 'none') { badge.classList.add('none'); badge.innerText = '●'; }
+                            else if (cam.alarm_level === 'yellow') { badge.classList.add('yellow'); badge.innerText = '⚠️'; hasYellow = true; }
+                            else { badge.classList.add('red'); badge.innerText = '🚨'; hasRed = true; totalRedAlarm += cam.violation_count; }
+                        }
+                        if (cam.records) cam.records.forEach(r => { r.cam_name = cam.name; allRecords.push(r); });
+                    });
+                    document.getElementById('violationCount').innerText = totalRedAlarm;
+                    const dot = document.getElementById('statusDot');
+                    const text = document.getElementById('alarmLevelDisplay');
+                    const levelText = document.getElementById('alarmLevelText');
+                    dot.className = 'status-dot';
+                    if (hasRed) {
+                        dot.classList.add('red'); text.innerText = '存在超时告警'; text.className = 'value danger';
+                        levelText.innerText = '🚨 人员超时停留，持续报警中';
+                    } else if (hasYellow) {
+                        dot.classList.add('yellow'); text.innerText = '存在入区预警'; text.className = 'value warning';
+                        levelText.innerText = '⚠️ 有人员进入警戒区域';
+                    } else {
+                        dot.classList.add('green'); text.innerText = '无'; text.className = 'value info';
+                        levelText.innerText = '✅ 全部区域安全';
+                    }
+                    const sorted = allRecords.sort((a,b) => b.id - a.id).slice(0, 20);
+                    const tbody = document.getElementById('recordTableBody');
+                    tbody.innerHTML = '';
+                    if (sorted.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="3" style="color:#3a5a7a;text-align:center;">暂无告警记录</td></tr>';
+                    } else {
+                        sorted.forEach(r => {
+                            const row = tbody.insertRow();
+                            row.insertCell(0).innerText = r.id;
+                            row.insertCell(1).innerText = r.time;
+                            row.insertCell(2).innerText = r.type;
+                        });
+                    }
+                    const ov = document.getElementById('zoomOverlay');
+                    if (ov.classList.contains('active') && currentZoomCamId) {
+                        const c = data.find(d => d.id === currentZoomCamId);
+                        if (c) {
+                            const zb = document.getElementById('zoomBadge');
+                            zb.className = 'zoom-badge';
+                            if (c.alarm_level === 'none') { zb.classList.add('none'); zb.innerText = '● 正常'; }
+                            else if (c.alarm_level === 'yellow') { zb.classList.add('yellow'); zb.innerText = '⚠️ 入区预警'; }
+                            else { zb.classList.add('red'); zb.innerText = '🚨 超时报警'; }
+                        }
+                    }
+                });
+        }
+        function zoomIn(el) {
+            const id = el.dataset.cam;
+            currentZoomCamId = id;
+            document.getElementById('zoomOverlay').classList.add('active');
+            const img = document.getElementById('zoomImg');
+            img.src = '';
+            setTimeout(() => { img.src = `/video_feed/${id}?t=${Date.now()}`; }, 50);
+            const name = el.querySelector('.cam-label')?.innerText || id;
+            document.getElementById('zoomLabel').innerText = '📹 ' + name;
+            const srcBadge = el.querySelector('.cam-badge');
+            const dstBadge = document.getElementById('zoomBadge');
+            dstBadge.className = 'zoom-badge ' + (srcBadge ? srcBadge.className.split(' ').slice(1).join(' ') : 'none');
+            if (srcBadge.innerText === '●') dstBadge.innerText = '● 正常';
+            else if (srcBadge.innerText === '⚠️') dstBadge.innerText = '⚠️ 入区预警';
+            else dstBadge.innerText = '🚨 超时报警';
+            const thumbContainer = document.getElementById('thumbnails');
+            thumbContainer.innerHTML = '';
+            document.querySelectorAll('.cam-item').forEach(otherCell => {
+                const thumb = document.createElement('div');
+                thumb.className = 'zoom-thumbnail';
+                thumb.dataset.cam = otherCell.dataset.cam;
+                const otherBadge = otherCell.querySelector('.cam-badge');
+                const badgeClass = otherBadge ? otherBadge.className.split(' ').slice(1).join(' ') : 'none';
+                const badgeText = otherBadge ? otherBadge.innerText : '●';
+                thumb.innerHTML = `
+                    <img src="/video_feed/${otherCell.dataset.cam}" />
+                    <div class="thumb-label">${otherCell.querySelector('.cam-label')?.innerText || ''}</div>
+                    <div class="thumb-badge ${badgeClass}">${badgeText}</div>
+                `;
+                thumb.onclick = (function(cell) { return function(e) { e.stopPropagation(); zoomIn(cell); }; })(otherCell);
+                if (otherCell.dataset.cam === id) thumb.classList.add('active');
+                thumbContainer.appendChild(thumb);
+            });
+        }
+        function zoomOut() {
+            document.getElementById('zoomOverlay').classList.remove('active');
+            currentZoomCamId = null;
+        }
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') zoomOut(); });
+        const wall = document.getElementById('videoWall');
+        const canvas = document.getElementById('drawCanvas');
+        const ctx = canvas.getContext('2d');
+        const catcher = document.getElementById('drawCatcher');
+        let isDrawing = false, sx = 0, sy = 0, ex = 0, ey = 0, drawMode = false;
+        function resizeCanvas() {
+            const rect = wall.getBoundingClientRect();
+            canvas.width = rect.width; canvas.height = rect.height;
+            canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
+        }
+        window.addEventListener('resize', resizeCanvas);
+        setTimeout(resizeCanvas, 300);
+        function toggleDrawMode() {
+            drawMode = !drawMode;
+            catcher.style.display = drawMode ? 'block' : 'none';
+            document.getElementById('drawBtn').style.background = drawMode ? '#ff6644' : '#1a4a7a';
+            document.getElementById('drawHint').innerText = drawMode ? '🔴 拖拽框选警戒区域（松开提交）' : '点击按钮开启绘制模式';
+            document.getElementById('drawHint').style.color = drawMode ? '#ff6644' : '#4a7a6a';
+            document.getElementById('cancelDrawBtn').style.display = drawMode ? 'inline-block' : 'none';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            isDrawing = false;
+        }
+        function cancelDraw() { if (drawMode) toggleDrawMode(); }
+        function getCurrentCamCell() {
+            const cid = document.getElementById('camSelect').value;
+            return document.querySelector(`.cam-item[data-cam="${cid}"]`);
+        }
+        catcher.addEventListener('mousedown', (e) => {
+            if (!drawMode) return;
+            const cell = getCurrentCamCell();
+            if (!cell) return;
+            const rect = cell.getBoundingClientRect();
+            const px = e.clientX - rect.left, py = e.clientY - rect.top;
+            if (px < 0 || py < 0 || px > rect.width || py > rect.height) return;
+            isDrawing = true;
+            sx = (px / rect.width) * 100; sy = (py / rect.height) * 100;
+            ex = sx; ey = sy;
+        });
+        catcher.addEventListener('mousemove', (e) => {
+            if (!isDrawing || !drawMode) return;
+            const cell = getCurrentCamCell();
+            if (!cell) return;
+            const rect = cell.getBoundingClientRect();
+            const px = Math.min(rect.width, Math.max(0, e.clientX - rect.left));
+            const py = Math.min(rect.height, Math.max(0, e.clientY - rect.top));
+            ex = (px / rect.width) * 100; ey = (py / rect.height) * 100;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const wallRect = wall.getBoundingClientRect();
+            const offsetX = rect.left - wallRect.left;
+            const offsetY = rect.top - wallRect.top;
+            const x = Math.min(sx, ex) / 100 * rect.width + offsetX;
+            const y = Math.min(sy, ey) / 100 * rect.height + offsetY;
+            const ww = Math.abs(ex - sx) / 100 * rect.width;
+            const hh = Math.abs(ey - sy) / 100 * rect.height;
+            ctx.fillStyle = 'rgba(0,180,255,0.25)';
+            ctx.strokeStyle = '#00ccff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath(); ctx.rect(x, y, ww, hh); ctx.fill(); ctx.stroke();
+            ctx.setLineDash([]);
+        });
+        catcher.addEventListener('mouseup', (e) => {
+            if (!isDrawing || !drawMode) return;
+            isDrawing = false;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const camId = document.getElementById('camSelect').value;
+            const x1 = Math.max(0, Math.min(sx, ex));
+            const y1 = Math.max(0, Math.min(sy, ey));
+            const x2 = Math.min(100, Math.max(sx, ex));
+            const y2 = Math.min(100, Math.max(sy, ey));
+            if (x2 - x1 < 1 || y2 - y1 < 1) {
+                document.getElementById('drawHint').innerText = '⚠️ 框选区域过小，请重新拖拽';
+                document.getElementById('drawHint').style.color = '#ff6644';
+                setTimeout(() => { if (drawMode) { document.getElementById('drawHint').innerText = '🔴 拖拽框选警戒区域（松开提交）'; document.getElementById('drawHint').style.color = '#ff6644'; } }, 1500);
+                return;
+            }
+            const data = { x1: Math.round(x1), y1: Math.round(y1), x2: Math.round(x2), y2: Math.round(y2) };
+            fetch(`/api/set_zone/${camId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }).then(res => res.json()).then(() => {
+                document.getElementById('drawHint').innerText = `✅ 已更新 ${document.getElementById('camSelect').selectedOptions[0].text} 的警戒区`;
+                document.getElementById('drawHint').style.color = '#4aaf6a';
+                document.getElementById('currentZoneCoords').innerText = `${data.x1},${data.y1},${data.x2},${data.y2}`;
+                fetchStatus();
+            }).catch(() => alert('❌ 更新警戒区失败'));
+        });
+        function resetZone() {
+            const camId = document.getElementById('camSelect').value;
+            fetch(`/api/set_zone/${camId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ x1: 30, y1: 30, x2: 70, y2: 70 })
+            }).then(() => {
+                alert('✅ 已重置警戒区');
+                document.getElementById('currentZoneCoords').innerText = '30,30,70,70';
+                fetchStatus();
+            });
+        }
+        function clearRecords() {
+            if (!confirm('确定清空所有告警记录？')) return;
+            fetch('/api/clear_records', { method: 'POST' }).then(() => fetchStatus());
+        }
+        document.getElementById('mapUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const formData = new FormData();
+            formData.append('map', file);
+            fetch('/api/upload_map', { method: 'POST', body: formData }).then(res => res.json()).then(data => {
+                if (data.status === 'ok') {
+                    document.getElementById('mapPlaceholder').style.display = 'none';
+                    document.getElementById('mapImage').src = '/static/uploads/map.jpg?t=' + Date.now();
+                    document.getElementById('mapImage').style.display = 'block';
+                    document.getElementById('mapStatus').textContent = '✅ 地图上传完成';
+                    document.getElementById('mapStatus').style.color = '#4aaf6a';
+                }
+            });
+        });
+        fetch('/static/uploads/map.jpg').then(res => {
+            if (res.ok) {
+                document.getElementById('mapPlaceholder').style.display = 'none';
+                document.getElementById('mapImage').src = '/static/uploads/map.jpg?t=' + Date.now();
+                document.getElementById('mapImage').style.display = 'block';
+                document.getElementById('mapStatus').textContent = '✅ 地图已加载';
+                document.getElementById('mapStatus').style.color = '#4aaf6a';
+            }
+        }).catch(() => {});
+        setInterval(fetchStatus, 1500);
+        fetchStatus();
+        loadVideos();
+
+        // ===== 轻量 Toast 提示 =====
+        function toast(msg, type) {
+            let box = document.getElementById('toastBox');
+            if (!box) {
+                box = document.createElement('div');
+                box.id = 'toastBox';
+                box.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10000;display:flex;flex-direction:column;gap:10px;';
+                document.body.appendChild(box);
+            }
+            const t = document.createElement('div');
+            t.style.cssText = 'min-width:260px;max-width:360px;padding:13px 18px;border-radius:10px;background:#16213a;border:1px solid var(--border);color:var(--text);font-size:13.5px;box-shadow:0 10px 30px rgba(0,0,0,.5);display:flex;align-items:center;gap:10px;animation:blink .2s;';
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+            t.innerHTML = '<span>' + icon + '</span><span>' + msg + '</span>';
+            box.appendChild(t);
+            setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, 2600);
+        }
+    </script>
+</body>
+</html>

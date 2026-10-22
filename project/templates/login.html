@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 越界监测系统</title>
+    <style>
+        :root {
+            --accent: #2dd4ff; --accent-2: #7b5cff; --text: #eaf0fb;
+            --muted: #8296b8; --border: #22304a; --green: #22d39b; --red: #ff4d6d;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+            background:
+                radial-gradient(900px 500px at 15% -10%, rgba(45,212,255,.18), transparent 60%),
+                radial-gradient(900px 500px at 100% 0%, rgba(123,92,255,.2), transparent 55%),
+                linear-gradient(135deg, #0a0e17 0%, #16203a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .login-box {
+            background: linear-gradient(145deg, #121a2e, #16213a);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 42px 40px;
+            width: 400px;
+            max-width: 100%;
+            box-shadow: 0 30px 80px rgba(0,0,0,.55);
+        }
+        .login-box .logo { text-align: center; font-size: 40px; margin-bottom: 8px; }
+        .login-box h1 {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 6px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        .login-box .subtitle {
+            text-align: center;
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 28px;
+        }
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            color: #a7b8d8;
+            font-size: 13px;
+            margin-bottom: 7px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 13px 15px;
+            background: #0c1428;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 14px;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .form-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(45,212,255,.12); }
+        .btn-login {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(90deg, #1a6fae, #2a8fd8);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: filter .2s;
+            margin-top: 8px;
+            box-shadow: 0 8px 20px rgba(42,143,216,.35);
+        }
+        .btn-login:hover { filter: brightness(1.1); }
+        .error-msg {
+            background: rgba(255,77,109,.12);
+            border: 1px solid rgba(255,77,109,.35);
+            color: #ff8aa0;
+            padding: 11px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .link-row {
+            text-align: center;
+            margin-top: 18px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .link-row a { color: var(--accent); text-decoration: none; }
+        .link-row a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <div class="logo">🛡️</div>
+        <h1>越界行为监测系统</h1>
+        <div class="subtitle">YOLOv8 智能视频监控告警平台</div>
+        {% if error %}
+        <div class="error-msg">{{ error }}</div>
+        {% endif %}
+        <form method="POST" autocomplete="off" onsubmit="this.action='/login'">
+            <!-- 隐藏诱饵字段：欺骗浏览器自动填充，避免自动保存账号密码 -->
+            <input type="text" name="fakeuser" style="display:none" tabindex="-1" aria-hidden="true">
+            <input type="password" name="fakepass" style="display:none" tabindex="-1" aria-hidden="true">
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" name="username" autocomplete="off" required placeholder="请输入用户名">
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" name="password" autocomplete="new-password" required placeholder="请输入密码">
+            </div>
+            <button type="submit" class="btn-login">登 录</button>
+        </form>
+        <div class="link-row">
+            还没有账号？<a href="/register">立即注册</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+    "conf_thresh": 0.3,
+    "area_thresh": 100,
+    "alarm_duration_thresh": 6,
+    "frame_skip": 1,
+    "reentry_window": 300,
+    "face_confidence_threshold": 85,
+    "model_path": "runs/segment/train/weights/best.pt",
+    "fallback_model_path": "yolov8s-seg.pt"
+}

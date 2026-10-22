@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>白名单管理 - 越界监测系统</title>
+    <style>
+        :root {
+            --bg: #0b1020;
+            --panel: #121a2e;
+            --panel-2: #16213a;
+            --border: #22304a;
+            --text: #eaf0fb;
+            --muted: #8296b8;
+            --accent: #2dd4ff;
+            --accent-2: #7b5cff;
+            --green: #22d39b;
+            --amber: #ffb020;
+            --red: #ff4d6d;
+            --radius: 14px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+            background:
+                radial-gradient(1200px 500px at 10% -10%, rgba(45,212,255,.10), transparent 60%),
+                radial-gradient(1000px 500px at 110% 0%, rgba(123,92,255,.12), transparent 55%),
+                var(--bg);
+            color: var(--text);
+            padding: 22px;
+            min-height: 100vh;
+        }
+        .header {
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+            padding: 18px 26px;
+            background: linear-gradient(135deg, #141d33, #182440);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 22px;
+            box-shadow: 0 10px 30px rgba(0,0,0,.35);
+        }
+        .header h1 {
+            font-size: 21px; font-weight: 700; letter-spacing: 1px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text; color: transparent;
+        }
+        .nav { display: flex; gap: 6px; flex-wrap: wrap; }
+        .nav a {
+            color: var(--muted); text-decoration: none; padding: 7px 15px;
+            border-radius: 999px; font-size: 13.5px; transition: all .2s;
+        }
+        .nav a:hover { color: var(--accent); background: rgba(45,212,255,.08); }
+        .nav a.active { color: #fff; background: linear-gradient(90deg, #1a5a8a, #2a6aaa); box-shadow: 0 4px 14px rgba(26,90,138,.4); }
+        .nav a.logout { color: #ff8aa0; }
+        .card {
+            background: linear-gradient(145deg, var(--panel), var(--panel-2));
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 22px;
+            margin-bottom: 22px;
+            box-shadow: 0 8px 26px rgba(0,0,0,.3);
+        }
+        .card-title {
+            font-size: 15px; color: #a7b8d8; margin-bottom: 16px;
+            display: flex; align-items: center; gap: 8px; font-weight: 600;
+        }
+        .card-title .icon { font-size: 18px; }
+        /* 摄像头控制条 */
+        .cam-control {
+            display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+            padding: 14px 18px; margin-bottom: 18px;
+            background: rgba(45,212,255,.06); border: 1px solid rgba(45,212,255,.25);
+            border-radius: 12px;
+        }
+        .cam-control .dot { width: 11px; height: 11px; border-radius: 50%; }
+        .dot.running { background: var(--green); box-shadow: 0 0 10px var(--green); }
+        .dot.paused { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
+        .cam-control .txt { font-size: 13.5px; color: var(--text); }
+        .cam-control .txt small { color: var(--muted); display: block; font-size: 12px; }
+        .btn {
+            padding: 10px 20px; border: none; border-radius: 10px; cursor: pointer;
+            font-size: 14px; font-weight: 600; transition: all .2s; color: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,.25);
+        }
+        .btn:active { transform: translateY(1px); }
+        .btn-primary { background: linear-gradient(90deg, #1a6fae, #2a8fd8); }
+        .btn-success { background: linear-gradient(90deg, #159a6a, #22b88a); }
+        .btn-danger { background: linear-gradient(90deg, #c43a52, #e0526d); }
+        .btn-warn { background: linear-gradient(90deg, #c08a1a, #e0a62a); }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--muted); box-shadow: none; }
+        .btn:disabled { opacity: .5; cursor: not-allowed; }
+        .form-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        input[type="text"] {
+            padding: 11px 15px; background: #0c1428; border: 1px solid var(--border);
+            border-radius: 10px; color: var(--text); font-size: 14px; outline: none; transition: border-color .2s;
+            width: 220px;
+        }
+        input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(45,212,255,.12); }
+        .file-label {
+            padding: 10px 20px; background: #14213a; border-radius: 10px; cursor: pointer;
+            font-size: 14px; color: #a7c4e8; border: 1px dashed #2c4a72;
+        }
+        input[type="file"] { display: none; }
+        .mode-tabs { display: flex; gap: 10px; margin-bottom: 16px; }
+        .mode-btn {
+            padding: 9px 18px; border: 1px solid var(--border); border-radius: 999px;
+            background: #0d1730; color: var(--muted); cursor: pointer; font-size: 13.5px; transition: all .2s;
+        }
+        .mode-btn.active { background: linear-gradient(90deg, #1a5a8a, #2a6aaa); border-color: transparent; color: #fff; }
+        .mode-panel { display: none; }
+        .mode-panel.active { display: block; }
+        .cam-preview {
+            width: 360px; max-width: 100%; aspect-ratio: 4/3;
+            background: #05070f; border-radius: 12px; border: 1px solid var(--border);
+            margin-bottom: 12px; object-fit: cover;
+        }
+        .people-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
+        .person-card {
+            background: #0d1730; border: 1px solid var(--border); border-radius: 12px;
+            padding: 14px; text-align: center; transition: all .25s;
+        }
+        .person-card:hover { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 10px 24px rgba(0,0,0,.4); }
+        .person-card img {
+            width: 100%; height: 168px; object-fit: cover; border-radius: 10px;
+            margin-bottom: 10px; background: #151a2c;
+        }
+        .person-name { font-size: 14.5px; font-weight: 600; margin-bottom: 3px; }
+        .person-time { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+        .card-actions { display: flex; gap: 8px; justify-content: center; }
+        .card-actions .btn { padding: 6px 13px; font-size: 12px; }
+        .empty { text-align: center; color: var(--muted); padding: 46px; }
+        .tip {
+            background: rgba(45,212,255,.07); border: 1px solid rgba(45,212,255,.2);
+            border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #a7c4e8; margin-bottom: 16px;
+        }
+        .name-input {
+            width: 92%; padding: 7px 10px; background: #0c1428; border: 1px solid var(--border);
+            border-radius: 8px; color: var(--text); font-size: 13px; text-align: center; margin-bottom: 8px;
+        }
+        /* Toast */
+        #toastBox { position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            min-width: 260px; max-width: 360px; padding: 13px 18px; border-radius: 10px;
+            background: #16213a; border: 1px solid var(--border); color: var(--text);
+            font-size: 13.5px; box-shadow: 0 10px 30px rgba(0,0,0,.5);
+            display: flex; align-items: center; gap: 10px; animation: slideIn .25s ease;
+        }
+        .toast.success { border-left: 4px solid var(--green); }
+        .toast.error { border-left: 4px solid var(--red); }
+        .toast.info { border-left: 4px solid var(--accent); }
+        @keyframes slideIn { from { transform: translateX(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+        @media (max-width: 760px) { .people-grid { grid-template-columns: 1fr 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>👤 白名单人员管理</h1>
+        <div class="nav">
+            <a href="/">🏠 监控首页</a>
+            <a href="/records">📋 告警记录</a>
+            <a href="/whitelist" class="active">👤 白名单管理</a>
+            <a href="/logout" class="logout">退出登录 ({{ username }})</a>
+        </div>
+    </div>
+
+    <!-- 摄像头控制条：一键暂停/恢复监控，方便在白名单页直接用摄像头拍照 -->
+    <div class="card">
+        <div class="card-title"><span class="icon">🎥</span> 监控摄像头控制</div>
+        <div class="cam-control" id="camControlBar">
+            <span class="dot" id="monitorDot"></span>
+            <span class="txt" id="monitorStateTxt">正在检测监控状态…</span>
+            <button class="btn btn-warn" id="toggleMonitorBtn" onclick="toggleMonitor()" style="margin-left:auto;">⏸️ 暂停监控摄像头</button>
+        </div>
+        <div class="tip">
+            💡 监控首页的第1路监控默认占用着电脑摄像头。**拍照前请先点击上方「暂停监控摄像头」**（会释放摄像头占用），再在下方用「摄像头拍照」录入；录完可点「恢复监控摄像头」继续监控。
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title"><span class="icon">➕</span> 录入安全人员（二选一：摄像头拍照 / 选择照片）</div>
+        <div class="mode-tabs">
+            <button class="mode-btn active" data-mode="camera" onclick="switchMode('camera')">📷 摄像头拍照</button>
+            <button class="mode-btn" data-mode="upload" onclick="switchMode('upload')">🖼️ 选择照片</button>
+        </div>
+
+        <!-- 方式一：摄像头拍照 -->
+        <div class="mode-panel active" id="panel-camera">
+            <div class="form-row">
+                <input type="text" id="camName" placeholder="请输入人员姓名" required>
+                <button class="btn btn-primary" id="openCamBtn" onclick="openCam()">📷 开启摄像头</button>
+                <button class="btn btn-success" id="captureBtn" onclick="capture()" disabled>📸 拍照保存</button>
+            </div>
+            <div id="occupyHint" style="display:none;margin-top:14px;padding:14px 16px;background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.35);border-radius:10px;">
+                <div style="color:#ff8aa0;font-size:13.5px;margin-bottom:10px;">⚠️ 摄像头被监控占用，无法开启。点击下方按钮先暂停监控，再自动重试开启：</div>
+                <button class="btn btn-danger" onclick="pauseThenOpenCam()">⏸️ 暂停监控并重试开启</button>
+            </div>
+            <div style="margin-top:12px;">
+                <video id="camVideo" class="cam-preview" autoplay playsinline muted></video>
+                <canvas id="camCanvas" style="display:none;"></canvas>
+                <div id="camTip" style="font-size:12.5px;color:var(--muted);">点击「开启摄像头」后，对准人员点击「拍照保存」即可自动录入白名单。</div>
+            </div>
+        </div>
+
+        <!-- 方式二：选择照片 -->
+        <div class="mode-panel" id="panel-upload">
+            <form id="addForm" class="form-row">
+                <input type="text" id="personName" placeholder="请输入人员姓名" required>
+                <label class="file-label" for="faceFile">🖼️ 选择人脸照片</label>
+                <input type="file" id="faceFile" accept="image/*" required>
+                <button type="submit" class="btn btn-success">✅ 添加到白名单</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <span>📋 已录入白名单人员（<span id="countLabel" style="color:var(--accent);">{{ people|length }}</span>人）</span>
+            <button class="btn btn-danger" id="clearAllBtn" onclick="clearAllWhitelist()" style="padding:7px 14px;font-size:12.5px;">🗑️ 一键清空全部</button>
+        </div>
+        <div id="peopleArea">
+        {% if people %}
+        <div class="people-grid">
+            {% for p in people %}
+            <div class="person-card" id="card_{{ p.id }}">
+                <img src="{{ p.face_encoding_path }}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22190%22 height=%22168%22><rect width=%22190%22 height=%22168%22 fill=%22%23151a2c%22/><text x=%2295%22 y=%2290%22 fill=%22%238296b8%22 font-size=%2218%22 text-anchor=%22middle%22>无照片</text></svg>'" alt="{{ p.name }}">
+                <div class="person-name">{{ p.name }}</div>
+                <div class="person-time">🕐 {{ p.created_time }}</div>
+                <div class="card-actions">
+                    <button class="btn btn-warn" onclick="renamePerson({{ p.id }})">✏️ 重命名</button>
+                    <button class="btn btn-danger" onclick="deletePerson({{ p.id }})">🗑️ 删除</button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty" id="emptyTip">
+            <div style="font-size:42px;margin-bottom:10px;">👤</div>
+            <p>暂无白名单人员，请先添加安全人员</p>
+        </div>
+        {% endif %}
+        </div>
+    </div>
+
+    <div id="toastBox"></div>
+
+    <script>
+        // ===== 轻量 Toast 提示 =====
+        function toast(msg, type) {
+            const box = document.getElementById('toastBox');
+            const t = document.createElement('div');
+            t.className = 'toast ' + (type || 'info');
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+            t.innerHTML = '<span>' + icon + '</span><span>' + msg + '</span>';
+            box.appendChild(t);
+            setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, 2600);
+        }
+
+        // ===== 监控摄像头暂停/恢复控制 =====
+        let monitorPaused = false;
+        async function loadMonitorStatus() {
+            try {
+                const res = await fetch('/api/monitor/status');
+                const data = await res.json();
+                monitorPaused = !!data.paused;
+                renderMonitorState();
+            } catch (e) {}
+        }
+        function renderMonitorState() {
+            const dot = document.getElementById('monitorDot');
+            const txt = document.getElementById('monitorStateTxt');
+            const btn = document.getElementById('toggleMonitorBtn');
+            if (monitorPaused) {
+                dot.className = 'dot paused';
+                txt.innerHTML = '监控摄像头<span class="badge-paused" style="color:var(--amber);font-weight:700;">已暂停</span><small>摄像头已释放，可直接拍照录入白名单</small>';
+                btn.innerText = '▶️ 恢复监控摄像头';
+                btn.className = 'btn btn-success';
+            } else {
+                dot.className = 'dot running';
+                txt.innerHTML = '监控摄像头<span style="color:var(--green);font-weight:700;">运行中</span><small>占用着摄像头，拍照前请先暂停</small>';
+                btn.innerText = '⏸️ 暂停监控摄像头';
+                btn.className = 'btn btn-warn';
+            }
+        }
+        async function toggleMonitor() {
+            const btn = document.getElementById('toggleMonitorBtn');
+            btn.disabled = true;
+            const url = monitorPaused ? '/api/monitor/resume' : '/api/monitor/pause';
+            try {
+                const res = await fetch(url, { method: 'POST' });
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    monitorPaused = !monitorPaused;
+                    renderMonitorState();
+                    toast(monitorPaused ? '监控已暂停，摄像头已释放，可以去拍照了' : '监控已恢复', 'success');
+                }
+            } catch (e) { toast('操作失败', 'error'); }
+            btn.disabled = false;
+        }
+        // 若开启摄像头被占用，一键暂停后重试
+        async function pauseThenOpenCam() {
+            await fetch('/api/monitor/pause', { method: 'POST' });
+            monitorPaused = true;
+            renderMonitorState();
+            document.getElementById('occupyHint').style.display = 'none';
+            toast('已暂停监控，正在重试开启摄像头…', 'info');
+            setTimeout(openCam, 400);
+        }
+
+        // ===== 模式切换 =====
+        function switchMode(mode) {
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+            document.getElementById('panel-camera').classList.toggle('active', mode === 'camera');
+            document.getElementById('panel-upload').classList.toggle('active', mode === 'upload');
+        }
+
+        // ===== 方式一：摄像头拍照 =====
+        let camStream = null;
+        const camVideo = document.getElementById('camVideo');
+        const camCanvas = document.getElementById('camCanvas');
+
+        async function openCam() {
+            if (camStream) { stopCam(); return; }
+            document.getElementById('occupyHint').style.display = 'none';
+            try {
+                camStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 } } });
+                camVideo.srcObject = camStream;
+                camVideo.style.display = 'block';
+                document.getElementById('captureBtn').disabled = false;
+                document.getElementById('camTip').innerText = '✅ 摄像头已开启，对准人员后点击「拍照保存」。再次点击「开启摄像头」可关闭。';
+                document.getElementById('openCamBtn').innerText = '⛔ 关闭摄像头';
+                document.getElementById('camTip').style.color = 'var(--green)';
+            } catch (e) {
+                const msg = (e && e.message) || '';
+                if (/Could not start|NotAllowed|DevicesNotFound|NotFoundError|TrackStart|in use|占用/i.test(msg)) {
+                    document.getElementById('occupyHint').style.display = 'block';
+                    document.getElementById('camTip').innerText = '⚠️ 摄像头被监控占用，请先暂停监控摄像头再重试。';
+                    document.getElementById('camTip').style.color = 'var(--red)';
+                } else {
+                    toast('无法访问摄像头：' + msg, 'error');
+                }
+            }
+        }
+        function stopCam() {
+            if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+            camVideo.srcObject = null;
+            camVideo.style.display = 'none';
+            document.getElementById('captureBtn').disabled = true;
+            document.getElementById('openCamBtn').innerText = '📷 开启摄像头';
+            document.getElementById('camTip').innerText = '点击「开启摄像头」后，对准人员点击「拍照保存」即可自动录入白名单。';
+            document.getElementById('camTip').style.color = 'var(--muted)';
+        }
+        async function capture() {
+            const name = document.getElementById('camName').value.trim();
+            if (!name) { toast('请输入人员姓名', 'error'); return; }
+            if (!camStream) { toast('请先开启摄像头', 'error'); return; }
+            camCanvas.width = camVideo.videoWidth || 640;
+            camCanvas.height = camVideo.videoHeight || 480;
+            camCanvas.getContext('2d').drawImage(camVideo, 0, 0, camCanvas.width, camCanvas.height);
+            const blob = await new Promise(resolve => camCanvas.toBlob(resolve, 'image/jpeg', 0.9));
+            const fd = new FormData();
+            fd.append('name', name);
+            fd.append('face_image', blob, 'camera_capture.jpg');
+            const res = await fetch('/api/whitelist/add', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.status === 'ok') {
+                toast('✅ 拍照保存成功，已加入白名单', 'success');
+                stopCam();
+                document.getElementById('camName').value = '';
+                setTimeout(() => location.reload(), 500);
+            } else {
+                toast(data.error || '添加失败', 'error');
+            }
+        }
+
+        // ===== 方式二：选择照片上传 =====
+        document.getElementById('addForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('personName').value.trim();
+            const fileInput = document.getElementById('faceFile');
+            if (!name) { toast('请输入姓名', 'error'); return; }
+            if (!fileInput.files[0]) { toast('请选择照片', 'error'); return; }
+            const fd = new FormData();
+            fd.append('name', name);
+            fd.append('face_image', fileInput.files[0]);
+            const res = await fetch('/api/whitelist/add', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.status === 'ok') { toast('✅ 添加成功', 'success'); setTimeout(() => location.reload(), 400); }
+            else toast(data.error || '添加失败', 'error');
+        };
+
+        // ===== 重命名 / 删除 =====
+        async function renamePerson(id) {
+            const card = document.getElementById('card_' + id);
+            const curName = card.querySelector('.person-name').innerText;
+            const newName = prompt('请输入新姓名：', curName);
+            if (!newName || newName.trim() === '') return;
+            const res = await fetch(`/api/whitelist/rename/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newName.trim() })
+            });
+            const data = await res.json();
+            if (data.status === 'ok') { toast('✅ 已重命名', 'success'); setTimeout(() => location.reload(), 400); }
+            else toast(data.error || '重命名失败', 'error');
+        }
+        async function deletePerson(id) {
+            if (!confirm('确定删除该白名单人员？')) return;
+            const res = await fetch(`/api/whitelist/delete/${id}`, { method: 'POST' });
+            const data = await res.json();
+            if (data.status === 'ok') { toast('✅ 已删除', 'success'); setTimeout(() => location.reload(), 400); }
+            else toast('删除失败', 'error');
+        }
+        // ===== 一键清空全部白名单 =====
+        async function clearAllWhitelist() {
+            if (!confirm('确定清空全部白名单人员？该操作不可恢复！')) return;
+            const res = await fetch('/api/whitelist/clear', { method: 'POST' });
+            const data = await res.json();
+            if (data.status === 'ok') { toast('✅ 已清空全部白名单', 'success'); setTimeout(() => location.reload(), 400); }
+            else toast('清空失败', 'error');
+        }
+        window.addEventListener('beforeunload', stopCam);
+        loadMonitorStatus();
+    </script>
+</body>
+</html>

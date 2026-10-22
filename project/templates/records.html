@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>告警记录 - 越界监测系统</title>
+    <style>
+        :root {
+            --bg: #0b1020;
+            --panel: #121a2e;
+            --panel-2: #16213a;
+            --border: #22304a;
+            --text: #eaf0fb;
+            --muted: #8296b8;
+            --accent: #2dd4ff;
+            --green: #22d39b;
+            --amber: #ffb020;
+            --red: #ff4d6d;
+            --radius: 14px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+            background:
+                radial-gradient(1200px 500px at 10% -10%, rgba(45,212,255,.10), transparent 60%),
+                radial-gradient(1000px 500px at 110% 0%, rgba(123,92,255,.12), transparent 55%),
+                var(--bg);
+            color: var(--text);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 18px 26px;
+            background: linear-gradient(135deg, #141d33, #182440);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,.35);
+        }
+        .header h1 {
+            font-size: 20px;
+            background: linear-gradient(90deg, var(--accent), #7b5cff);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        .nav { display: flex; gap: 6px; flex-wrap: wrap; }
+        .nav a {
+            color: var(--muted);
+            text-decoration: none;
+            padding: 7px 15px;
+            border-radius: 999px;
+            font-size: 13.5px;
+            transition: all .2s;
+        }
+        .nav a:hover { color: var(--accent); background: rgba(45,212,255,.08); }
+        .nav a.active { color: #fff; background: linear-gradient(90deg,#1a5a8a,#2a6aaa); box-shadow: 0 4px 14px rgba(26,90,138,.4); }
+        .nav a.logout { color: #ff8aa0; }
+        .user-info { font-size: 13px; color: var(--muted); }
+        .card {
+            background: linear-gradient(145deg, var(--panel), var(--panel-2));
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: 0 8px 26px rgba(0,0,0,.3);
+        }
+        /* 筛选标签 */
+        .filter-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            padding: 8px 18px;
+            border: 1px solid #2a3a55;
+            border-radius: 20px;
+            background: #0d1420;
+            color: #8ab4d6;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { border-color: #00d4ff; color: #00d4ff; }
+        .tab-btn.active {
+            background: #1a4a7a;
+            border-color: #1a4a7a;
+            color: #fff;
+        }
+        .tab-btn .count {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-left: 4px;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th {
+            text-align: left;
+            padding: 10px;
+            color: #7a9abb;
+            border-bottom: 1px solid #1e3048;
+            font-weight: 400;
+        }
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #0d1a2a;
+            color: #c0d0e0;
+            vertical-align: middle;
+        }
+        tr:hover { background: rgba(0,200,255,0.05); }
+        .photo-thumb {
+            width: 140px;
+            height: 88px;
+            object-fit: cover;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid #2a3a55;
+            transition: transform 0.2s;
+        }
+        .photo-thumb:hover { transform: scale(1.05); }
+        .badge-red {
+            background: rgba(255,0,68,0.2);
+            color: #ff4466;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+        .badge-yellow {
+            background: rgba(255,200,0,0.2);
+            color: #ffcc44;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+        .badge-unhandled {
+            background: rgba(255,100,0,0.18);
+            color: #ffaa44;
+            padding: 2px 12px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+        .badge-handled {
+            background: rgba(0,255,136,0.15);
+            color: #3aef8a;
+            padding: 2px 12px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+        .badge-white {
+            background: rgba(0,255,160,0.14);
+            color: #2ee6a8;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+        .btn {
+            padding: 7px 15px;
+            border: none;
+            border-radius: 9px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all .2s;
+            margin: 2px;
+            color: #fff;
+            box-shadow: 0 3px 10px rgba(0,0,0,.25);
+        }
+        .btn:active { transform: translateY(1px); }
+        .btn:hover { filter: brightness(1.1); }
+        .btn-success { background: linear-gradient(90deg, #159a6a, #22b88a); }
+        .btn-warn { background: linear-gradient(90deg, #c08a1a, #e0a62a); }
+        .btn-danger { background: linear-gradient(90deg, #c43a52, #e0526d); }
+        .empty { text-align: center; color: #3a5a7a; padding: 40px; }
+        .photo-cell { min-width: 150px; }
+        .no-photo { color: #3a5a7a; font-size: 12px; }
+        /* 图片放大弹窗 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.active { display: flex; }
+        .modal img {
+            max-width: 90vw;
+            max-height: 85vh;
+            border-radius: 8px;
+        }
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: #fff;
+            font-size: 30px;
+            cursor: pointer;
+        }
+        #toastBox { position: fixed; top: 20px; right: 20px; z-index: 10001; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            min-width: 260px; max-width: 360px; padding: 13px 18px; border-radius: 10px;
+            background: #16213a; border: 1px solid var(--border); color: var(--text);
+            font-size: 13.5px; box-shadow: 0 10px 30px rgba(0,0,0,.5);
+            display: flex; align-items: center; gap: 10px; animation: slideIn .25s ease;
+        }
+        .toast.success { border-left: 4px solid var(--green); }
+        .toast.error { border-left: 4px solid var(--red); }
+        .toast.info { border-left: 4px solid var(--accent); }
+        @keyframes slideIn { from { transform: translateX(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📋 告警记录与拍照存档</h1>
+        <div class="nav">
+            <a href="/">🏠 监控首页</a>
+            <a href="/records" class="active">📋 告警记录</a>
+            <a href="/whitelist">👤 白名单管理</a>
+            <a href="/logout" class="logout">退出登录 ({{ username }})</a>
+        </div>
+    </div>
+    <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+            <div class="filter-tabs" style="margin-bottom:0;">
+                <button class="tab-btn active" data-ftype="all" onclick="setType('all')">全部类型</button>
+                <button class="tab-btn" data-ftype="alarm" onclick="setType('alarm')">⚠️ 越界报警</button>
+                <button class="tab-btn" data-ftype="whitelist" onclick="setType('whitelist')">👤 白名单进入</button>
+            </div>
+            <button class="btn btn-danger" onclick="clearAll()">🗑️ 一键删除全部</button>
+        </div>
+        <div class="filter-tabs">
+            <button class="tab-btn active" data-filter="all" onclick="setFilter('all')">全部<span class="count" id="cAll">0</span></button>
+            <button class="tab-btn" data-filter="unhandled" onclick="setFilter('unhandled')">🔴 未处理<span class="count" id="cUnhandled">0</span></button>
+            <button class="tab-btn" data-filter="handled" onclick="setFilter('handled')">🟢 已处理<span class="count" id="cHandled">0</span></button>
+        </div>
+        <div id="recordArea"></div>
+    </div>
+    <div class="modal" id="photoModal" onclick="closeModal()">
+        <span class="modal-close">&times;</span>
+        <img id="modalImg" src="">
+    </div>
+    <div id="toastBox"></div>
+    <script>
+        function toast(msg, type) {
+            const box = document.getElementById('toastBox');
+            const t = document.createElement('div');
+            t.className = 'toast ' + (type || 'info');
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+            t.innerHTML = '<span>' + icon + '</span><span>' + msg + '</span>';
+            box.appendChild(t);
+            setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, 2600);
+        }
+        let currentFilter = 'all';
+        let currentType = 'all';
+        let allRecords = [];
+
+        async function loadRecords() {
+            const res = await fetch('/api/alarms?type=' + currentType);
+            allRecords = await res.json();
+            render();
+        }
+
+        function setType(t) {
+            currentType = t;
+            document.querySelectorAll('.tab-btn[data-ftype]').forEach(b => b.classList.toggle('active', b.dataset.ftype === t));
+            loadRecords();
+        }
+
+        function setFilter(f) {
+            currentFilter = f;
+            document.querySelectorAll('.tab-btn[data-filter]').forEach(b => b.classList.toggle('active', b.dataset.filter === f));
+            render();
+        }
+
+        function render() {
+            const cAll = document.getElementById('cAll');
+            const cUn = document.getElementById('cUnhandled');
+            const cHd = document.getElementById('cHandled');
+            cAll.innerText = allRecords.length;
+            cUn.innerText = allRecords.filter(r => r.status === 'unhandled').length;
+            cHd.innerText = allRecords.filter(r => r.status === 'handled').length;
+
+            const rows = currentFilter === 'all' ? allRecords : allRecords.filter(r => r.status === currentFilter);
+            const area = document.getElementById('recordArea');
+            if (rows.length === 0) {
+                area.innerHTML = '<div class="empty"><div style="font-size:40px;margin-bottom:10px;">📭</div><p>暂无记录</p></div>';
+                return;
+            }
+            let html = '<table><thead><tr>' +
+                '<th>序号</th><th>时间</th><th>监控点</th><th>类型</th><th>停留时长</th><th>出现次数</th><th>现场照片</th><th>处理状态</th><th>操作</th>' +
+                '</tr></thead><tbody>';
+            rows.forEach(r => {
+                const typeBadge = r.alarm_type === 'whitelist'
+                    ? '<span class="badge-white">👤 白名单进入</span>'
+                    : r.alarm_type === 'red'
+                        ? '<span class="badge-red">🚨 超时告警</span>'
+                        : '<span class="badge-yellow">⚠️ 入区预警</span>';
+                const statusBadge = r.status === 'handled'
+                    ? '<span class="badge-handled">已处理</span>'
+                    : '<span class="badge-unhandled">未处理</span>';
+                let photoHtml;
+                if (r.photo_path) {
+                    photoHtml = `<img src="${r.photo_path}" class="photo-thumb" onerror="this.outerHTML='<span class=&quot;no-photo&quot;>照片文件缺失</span>'" onclick="openModal('${r.photo_path}')">`;
+                } else {
+                    photoHtml = '<span class="no-photo">无照片</span>';
+                }
+                const handleBtn = r.status === 'handled'
+                    ? `<button class="btn btn-warn" onclick="setStatus(${r.id},'unhandled')">↩️ 标记未处理</button>`
+                    : `<button class="btn btn-success" onclick="setStatus(${r.id},'handled')">✅ 标记已处理</button>`;
+                html += `<tr>
+                    <td>${r.id}</td>
+                    <td>${r.timestamp}</td>
+                    <td>${r.cam_name}</td>
+                    <td>${typeBadge}</td>
+                    <td>${r.duration}秒</td>
+                    <td>${r.appearances ?? 1}次</td>
+                    <td class="photo-cell">${photoHtml}</td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        ${handleBtn}
+                        <button class="btn btn-danger" onclick="delRecord(${r.id})">🗑️ 删除</button>
+                    </td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            area.innerHTML = html;
+        }
+
+        async function setStatus(id, status) {
+            const res = await fetch(`/api/alarms/${id}/status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            const data = await res.json();
+            if (data.status === 'ok') { toast(status === 'handled' ? '✅ 已标记为已处理' : '↩️ 已标记为未处理', 'success'); loadRecords(); }
+            else toast('操作失败', 'error');
+        }
+
+        async function delRecord(id) {
+            if (!confirm('确定删除该告警记录及其照片？')) return;
+            const res = await fetch(`/api/alarms/${id}/delete`, { method: 'POST' });
+            const data = await res.json();
+            if (data.status === 'ok') { toast('🗑️ 已删除该告警记录', 'success'); loadRecords(); }
+            else toast('删除失败', 'error');
+        }
+
+        async function clearAll() {
+            if (!confirm('⚠️ 确定清空全部告警记录及所有现场照片？此操作不可恢复！')) return;
+            const res = await fetch('/api/alarms/clear', { method: 'POST' });
+            const data = await res.json();
+            if (data.status === 'ok') { toast('🗑️ 已清空全部告警记录', 'success'); loadRecords(); }
+            else toast('清空失败', 'error');
+        }
+
+        function openModal(src) {
+            document.getElementById('modalImg').src = src;
+            document.getElementById('photoModal').classList.add('active');
+        }
+        function closeModal() {
+            document.getElementById('photoModal').classList.remove('active');
+        }
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+        loadRecords();
+    </script>
+</body>
+</html>
