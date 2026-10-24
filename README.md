@@ -3,11 +3,16 @@
 基于 **YOLOv8 + Flask** 开发的轻量级实时监控报警平台。致力于解决传统监控只能“事后查看”、无法“实时预警”的痛点，实现从视频流采集、目标检测、越界判定到自动报警的全流程闭环。
 
 ## 🖼️ 界面展示
-![登录界面](Login%20page.png)
-![注册界面](Register%20page.png)
-![首页](login.png)
-![告警界面](Alarm%20page.png)
-![输入图片说明](Whitelist%20page.png)
+<img width="900" height="753" alt="image" src="https://github.com/user-attachments/assets/005460f8-6557-4b3e-bded-714ca1b41f48" />
+<img width="900" height="753" alt="image" src="https://github.com/user-attachments/assets/ce9b2350-b28c-4dcb-ab54-ffec392423d3" />
+<img width="1919" height="939" alt="Alarm page" src="https://github.com/user-attachments/assets/a6f0fe3a-4fd3-43c7-90f0-44598467970f" />
+<img width="1899" height="942" alt="Whitelist page" src="https://github.com/user-attachments/assets/c268083c-fef7-459e-9015-f9c5d5005de2" />
+
+
+
+
+
+
 
 
 ## 📌 项目简介
