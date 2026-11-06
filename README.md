@@ -48,12 +48,12 @@
    cd multi-camera-intrusion-detection
 ```
 
-### 2. 安装依赖
+2. **按照依赖**
  ```bash
 pip install -r requirements.txt
 '''
 
-### 3. 启动系统
+3. **启动系统**
 ```bash
 python main.py
 '''
