@@ -45,7 +45,7 @@
 1. **克隆本仓库到本地**
    ```bash
    git clone https://github.com/forfor-byte/multi-camera-intrusion-detection.git
-cd multi-camera-intrusion-detection
+   cd multi-camera-intrusion-detection
 ```
 ```bash
 pip install -r requirements.txt
