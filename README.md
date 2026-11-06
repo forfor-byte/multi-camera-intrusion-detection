@@ -53,5 +53,5 @@ pip install -r requirements.txt
 ### 3. 启动系统
 
 ```bash
-python app.py
+python main.py
 '''
