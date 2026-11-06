@@ -47,11 +47,5 @@
    git clone https://github.com/forfor-byte/multi-camera-intrusion-detection.git
    cd multi-camera-intrusion-detection
 ```
-```bash
 pip install -r requirements.txt
-'''
-### 3. 启动系统
-
-```bash
 python main.py
-'''
