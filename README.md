@@ -44,5 +44,14 @@
 
 1. **克隆本仓库到本地**
    ```bash
-   git clone https://gitee.com/你的用户名/你的仓库名.git
+   git clone https://github.com/forfor-byte/multi-camera-intrusion-detection.git
+cd multi-camera-intrusion-detection
 ```
+```bash
+pip install -r requirements.txt
+'''
+### 3. 启动系统
+
+```bash
+python app.py
+'''
