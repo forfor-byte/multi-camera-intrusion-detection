@@ -46,7 +46,7 @@
    ```bash
    git clone https://github.com/forfor-byte/multi-camera-intrusion-detection.git
    cd multi-camera-intrusion-detection
-```
+``
 
 2.**安装依赖**
  ```bash
