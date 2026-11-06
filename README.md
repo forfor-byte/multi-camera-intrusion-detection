@@ -47,5 +47,18 @@
    git clone https://github.com/forfor-byte/multi-camera-intrusion-detection.git
    cd multi-camera-intrusion-detection
 ```
+
+### 2. 安装依赖
+
+请确保已安装 Python 环境，运行以下命令安装依赖：
+
+```bash
 pip install -r requirements.txt
+'''
+
+### 3. 启动系统
+运行主程序启动服务：
+
+'''
 python main.py
+'''
