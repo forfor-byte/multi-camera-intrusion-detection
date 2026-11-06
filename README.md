@@ -49,12 +49,12 @@
 
 2.**安装依赖**
  ```bash
-pip install -r requirements.txt
+  pip install -r requirements.txt
 ```
 
 3. **启动系统**
 ```bash
-python main.py
+  python main.py
 ```
 
 
